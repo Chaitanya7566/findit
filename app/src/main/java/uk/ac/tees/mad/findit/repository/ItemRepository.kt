@@ -18,7 +18,7 @@ class ItemRepository @Inject constructor(
         try {
             val snapshot = firestore.collection("items")
                 .whereEqualTo("status", status.name)
-                .orderBy("createdAt", Query.Direction.DESCENDING)
+//                .orderBy("createdAt", Query.Direction.DESCENDING)
                 .get()
                 .await()
             val items = snapshot.toObjects(Item::class.java)

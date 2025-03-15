@@ -1,17 +1,15 @@
-package uk.ac.tees.mad.findit.ui
+package uk.ac.tees.mad.findit.navigation
 
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import uk.ac.tees.mad.findit.navigation.Routes
 import uk.ac.tees.mad.findit.ui.screens.auth.AuthScreen
 import uk.ac.tees.mad.findit.ui.screens.home.HomeScreen
+import uk.ac.tees.mad.findit.ui.screens.newitem.NewItemScreen
 import uk.ac.tees.mad.findit.ui.screens.splash.SplashScreen
 
 @Composable
@@ -43,6 +41,7 @@ fun LostAndFoundApp(navController: NavHostController = rememberNavController()) 
                 }
             )
         }
+
         composable(route = Routes.HOME) {
             HomeScreen(
                 onNavigateToItemDetail = { itemId ->
@@ -63,11 +62,19 @@ fun LostAndFoundApp(navController: NavHostController = rememberNavController()) 
             val itemId = backStackEntry.arguments?.getString("itemId") ?: ""
             // ItemDetailScreen implementation
         }
+
         composable(route = Routes.PROFILE) {
             // ProfileScreen implementation
         }
+
         composable(route = Routes.NEW_ITEM) {
-            // NewItemScreen implementation
+            NewItemScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onPostItem = { item ->
+                    // impl logic
+                    navController.popBackStack()
+                }
+            )
         }
     }
 }

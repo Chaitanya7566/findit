@@ -23,6 +23,9 @@ class HomeViewModel @Inject constructor(
     private val _foundItems = MutableStateFlow<Resource<List<Item>>>(Resource.Loading())
     val foundItems: StateFlow<Resource<List<Item>>> = _foundItems
 
+    private val _filters = MutableStateFlow(FilterState())
+    val filters: StateFlow<FilterState> = _filters
+
     init {
         fetchItems()
     }
@@ -33,4 +36,14 @@ class HomeViewModel @Inject constructor(
             repository.getItemsByStatus(ItemStatus.FOUND).collect { _foundItems.value = it }
         }
     }
+
+    fun applyFilters(category: String? = null, location: String? = null, daysAgo: Int? = null) {
+        _filters.value = FilterState(category, location, daysAgo)
+    }
 }
+
+data class FilterState(
+    val category: String? = null,
+    val location: String? = null,
+    val daysAgo: Int? = null
+)

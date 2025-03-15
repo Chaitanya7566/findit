@@ -1,4 +1,5 @@
 package uk.ac.tees.mad.findit.model
+
 data class Item(
     val id: String,
     val title: String,
@@ -6,5 +7,6 @@ data class Item(
     val category: String,
     val imageUrl: String,
     val lastSeenLocation: Location,
-    val status: ItemStatus
+    val status: ItemStatus,
+    val createdAt: Long
 )
