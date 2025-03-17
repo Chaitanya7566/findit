@@ -1,5 +1,6 @@
 package uk.ac.tees.mad.findit.ui.screens.newitem
 
+import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -25,31 +26,48 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
+import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import com.google.accompanist.permissions.isGranted
+import com.google.accompanist.permissions.rememberPermissionState
+import com.google.accompanist.permissions.shouldShowRationale
 import uk.ac.tees.mad.findit.model.Item
 import uk.ac.tees.mad.findit.model.ItemStatus
 import uk.ac.tees.mad.findit.model.Location
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalPermissionsApi::class)
 @Composable
 fun NewItemScreen(
     onNavigateBack: () -> Unit,
-    onPostItem: (Item) -> Unit
+    onPostItem: (Item) -> Unit,
+    viewModel: NewItemViewModel = hiltViewModel()
 ) {
     var title by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
     var category by remember { mutableStateOf("") }
     var imageUrl by remember { mutableStateOf("") }
-    var locationAddress by remember { mutableStateOf("") } // Manual entry for now
+    var location by remember { mutableStateOf(Location(0.0, 0.0, "")) }
     var status by remember { mutableStateOf(ItemStatus.LOST) }
+
+    val locationState by viewModel.location.collectAsState()
+
+    locationState?.let { location = it } // Update location when fetched
+
+    val locationPermissionState = rememberPermissionState(
+        permission = android.Manifest.permission.ACCESS_FINE_LOCATION
+    )
+    val context = LocalContext.current
 
     Scaffold(
         topBar = {
@@ -132,18 +150,37 @@ fun NewItemScreen(
                 }
             }
 
-            // Location Field (Manual Entry for Now)
+            // Location Field with Detection
             OutlinedTextField(
-                value = locationAddress,
-                onValueChange = { locationAddress = it },
-                label = { Text("Last Seen Location (e.g., address)") },
+                value = location.address,
+                onValueChange = { location = location.copy(address = it) },
+                label = { Text("Last Seen Location") },
                 modifier = Modifier.fillMaxWidth(),
                 trailingIcon = {
-                    Icon(
-                        Icons.Default.LocationOn,
-                        contentDescription = "Location",
-                        tint = MaterialTheme.colorScheme.primary
-                    )
+                    IconButton(
+                        onClick = {
+                            if (locationPermissionState.status.isGranted) {
+                                viewModel.fetchCurrentLocation {
+                                    // Permission denied
+                                    Toast.makeText(
+                                        context,
+                                        "Location permission denied",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                }
+                            } else if (locationPermissionState.status.shouldShowRationale) {
+                                // Show rationale if needed
+                            } else {
+                                locationPermissionState.launchPermissionRequest()
+                            }
+                        }
+                    ) {
+                        Icon(
+                            Icons.Default.LocationOn,
+                            contentDescription = "Get Current Location",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
                 },
                 singleLine = true
             )
@@ -186,11 +223,7 @@ fun NewItemScreen(
                         description = description,
                         category = category,
                         imageUrl = imageUrl,
-                        lastSeenLocation = Location(
-                            address = locationAddress,
-                            latitude = 0.0,
-                            longitude = 0.0
-                        ),
+                        lastSeenLocation = location,
                         status = status,
                         createdAt = 0L
                     )
