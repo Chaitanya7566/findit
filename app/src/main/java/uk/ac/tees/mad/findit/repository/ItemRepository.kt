@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.tasks.await
 import uk.ac.tees.mad.findit.model.Item
 import uk.ac.tees.mad.findit.model.ItemStatus
+import uk.ac.tees.mad.findit.model.Location
 import uk.ac.tees.mad.findit.utils.Resource
 import javax.inject.Inject
 
@@ -21,9 +22,36 @@ class ItemRepository @Inject constructor(
 //                .orderBy("createdAt", Query.Direction.DESCENDING)
                 .get()
                 .await()
-            val items = snapshot.toObjects(Item::class.java)
+            val items = snapshot.documents.mapNotNull { doc ->
+                val data = doc.data
+                if (data != null) {
+                    val lastSeenLocation = data["lastSeenLocation"] as? HashMap<String, Any>
+                    val location = if (lastSeenLocation != null) {
+                        Location(
+                            latitude = lastSeenLocation["latitude"] as Double,
+                            longitude = lastSeenLocation["longitude"] as Double,
+                            address = lastSeenLocation["address"] as String
+                        )
+                    } else {
+                        Location(0.0, 0.0, "")
+                    }
+                    Item(
+                        id = doc.id,
+                        title = data["title"] as String,
+                        description = data["description"] as String,
+                        category = data["category"] as String,
+                        imageUrl = data["imageUrl"] as String,
+                        lastSeenLocation = location,
+                        status = ItemStatus.valueOf(data["status"] as String),
+                        createdAt = data["createdAt"] as Long
+                    )
+                } else {
+                    null
+                }
+            }
             emit(Resource.Success(items))
         } catch (e: Exception) {
+            e.printStackTrace()
             emit(Resource.Error(e.message ?: "Failed to fetch items"))
         }
     }

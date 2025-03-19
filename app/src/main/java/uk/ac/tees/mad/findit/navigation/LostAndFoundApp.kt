@@ -69,11 +69,7 @@ fun LostAndFoundApp(navController: NavHostController = rememberNavController()) 
 
         composable(route = Routes.NEW_ITEM) {
             NewItemScreen(
-                onNavigateBack = { navController.popBackStack() },
-                onPostItem = { item ->
-                    // impl logic
-                    navController.popBackStack()
-                }
+                onNavigateBack = { navController.popBackStack() }
             )
         }
     }

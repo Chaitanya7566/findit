@@ -1,6 +1,9 @@
 package uk.ac.tees.mad.findit.ui.screens.newitem
 
+import android.net.Uri
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -33,9 +36,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.FileProvider
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
@@ -45,29 +50,66 @@ import com.google.accompanist.permissions.shouldShowRationale
 import uk.ac.tees.mad.findit.model.Item
 import uk.ac.tees.mad.findit.model.ItemStatus
 import uk.ac.tees.mad.findit.model.Location
+import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalPermissionsApi::class)
 @Composable
 fun NewItemScreen(
     onNavigateBack: () -> Unit,
-    onPostItem: (Item) -> Unit,
     viewModel: NewItemViewModel = hiltViewModel()
 ) {
     var title by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
     var category by remember { mutableStateOf("") }
     var imageUrl by remember { mutableStateOf("") }
+    var imageUri by remember { mutableStateOf<Uri?>(null) }
     var location by remember { mutableStateOf(Location(0.0, 0.0, "")) }
     var status by remember { mutableStateOf(ItemStatus.LOST) }
 
     val locationState by viewModel.location.collectAsState()
 
     locationState?.let { location = it } // Update location when fetched
-
+    val cameraPermissionState = rememberPermissionState(android.Manifest.permission.CAMERA)
     val locationPermissionState = rememberPermissionState(
         permission = android.Manifest.permission.ACCESS_FINE_LOCATION
     )
     val context = LocalContext.current
+
+    val cameraLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { success ->
+            if (success) {
+                val imagePath = imageUri?.let { uri ->
+                    try {
+                        val inputStream = context.contentResolver.openInputStream(uri)
+                        val file = File(context.cacheDir, "temp_image.jpg")
+                        file.outputStream().use { output ->
+                            inputStream?.copyTo(output)
+                        }
+                        file.absolutePath
+                    } catch (e: Exception) {
+                        null
+                    }
+                }
+                imagePath?.let { imageUrl = it }
+            }
+        }
+
+    val galleryLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+            val imagePath = uri?.let {
+                try {
+                    val inputStream = context.contentResolver.openInputStream(uri)
+                    val file = File(context.cacheDir, "temp_image.jpg")
+                    file.outputStream().use { output ->
+                        inputStream?.copyTo(output)
+                    }
+                    file.absolutePath
+                } catch (e: Exception) {
+                    null
+                }
+            }
+            imagePath?.let { imageUrl = it }
+        }
 
     Scaffold(
         topBar = {
@@ -169,7 +211,12 @@ fun NewItemScreen(
                                     ).show()
                                 }
                             } else if (locationPermissionState.status.shouldShowRationale) {
-                                // Show rationale if needed
+                                // Show rationale
+                                Toast.makeText(
+                                    context,
+                                    "Location permission is needed to detect your location",
+                                    Toast.LENGTH_SHORT
+                                ).show()
                             } else {
                                 locationPermissionState.launchPermissionRequest()
                             }
@@ -192,26 +239,51 @@ fun NewItemScreen(
                 modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
             )
             if (imageUrl.isNotEmpty()) {
+
                 AsyncImage(
                     model = imageUrl,
                     contentDescription = "Uploaded Photo",
                     modifier = Modifier
-                        .size(100.dp)
-                        .padding(bottom = 8.dp)
+                        .size(200.dp)
+                        .padding(bottom = 8.dp),
+                    contentScale = ContentScale.Crop
                 )
             }
-            Button(
-                onClick = { /* Placeholder for camera/gallery */ },
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(bottom = 8.dp)
+                    .padding(bottom = 8.dp),
+                horizontalArrangement = Arrangement.SpaceEvenly
             ) {
-                Icon(
-                    Icons.Default.AddAPhoto,
-                    contentDescription = "Add Photo",
-                    modifier = Modifier.padding(end = 8.dp)
-                )
-                Text("Add Photo")
+                Button(
+                    onClick = {
+                        if (cameraPermissionState.status.isGranted) {
+                            val tempFile =
+                                File.createTempFile("upload_image", ".jpg", context.cacheDir)
+                            val uri = FileProvider.getUriForFile(
+                                context,
+                                "${context.packageName}.fileprovider",
+                                tempFile
+                            )
+                            imageUri = uri
+                            cameraLauncher.launch(uri)
+                        } else {
+                            cameraPermissionState.launchPermissionRequest()
+                        }
+                    },
+                ) {
+                    Icon(
+                        Icons.Default.AddAPhoto,
+                        contentDescription = "Add Photo",
+                        modifier = Modifier.padding(end = 8.dp)
+                    )
+                    Text("Camera")
+                }
+                Button(
+                    onClick = { galleryLauncher.launch("image/*") }
+                ) {
+                    Text("Gallery")
+                }
             }
 
             // Post Button
@@ -222,12 +294,30 @@ fun NewItemScreen(
                         title = title,
                         description = description,
                         category = category,
-                        imageUrl = imageUrl,
+                        imageUrl = "",
                         lastSeenLocation = location,
                         status = status,
                         createdAt = 0L
                     )
-                    onPostItem(item)
+                    if (imageUrl.isNotEmpty()) {
+                        viewModel.postItem(
+                            item = item,
+                            imageFilePath = imageUrl,
+                            onSuccess = {
+                                Toast.makeText(
+                                    context,
+                                    "Item posted successfully",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                                onNavigateBack()
+                            },
+                            onFailure = { error ->
+                                Toast.makeText(context, error, Toast.LENGTH_SHORT).show()
+                            }
+                        )
+                    } else {
+                        Toast.makeText(context, "Please add a photo", Toast.LENGTH_SHORT).show()
+                    }
                 },
                 modifier = Modifier
                     .fillMaxWidth()
