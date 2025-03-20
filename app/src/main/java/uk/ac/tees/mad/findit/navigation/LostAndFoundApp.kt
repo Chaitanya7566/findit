@@ -9,6 +9,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import uk.ac.tees.mad.findit.ui.screens.auth.AuthScreen
 import uk.ac.tees.mad.findit.ui.screens.home.HomeScreen
+import uk.ac.tees.mad.findit.ui.screens.item_details.ItemDetailScreen
 import uk.ac.tees.mad.findit.ui.screens.newitem.NewItemScreen
 import uk.ac.tees.mad.findit.ui.screens.splash.SplashScreen
 
@@ -55,12 +56,16 @@ fun LostAndFoundApp(navController: NavHostController = rememberNavController()) 
                 }
             )
         }
+
         composable(
             route = "${Routes.ITEM_DETAIL}/{itemId}",
             arguments = listOf(navArgument("itemId") { type = NavType.StringType })
         ) { backStackEntry ->
             val itemId = backStackEntry.arguments?.getString("itemId") ?: ""
-            // ItemDetailScreen implementation
+            ItemDetailScreen(
+                itemId = itemId,
+                onNavigateBack = { navController.popBackStack() }
+            )
         }
 
         composable(route = Routes.PROFILE) {

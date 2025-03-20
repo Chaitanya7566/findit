@@ -55,4 +55,42 @@ class ItemRepository @Inject constructor(
             emit(Resource.Error(e.message ?: "Failed to fetch items"))
         }
     }
+
+
+    fun getItemById(id: String): Flow<Resource<Item>> = flow {
+        emit(Resource.Loading())
+        try {
+            val snapshot = firestore.collection("items")
+                .document(id)
+                .get()
+                .await()
+            val data = snapshot.data ?: throw Exception("Item not found")
+
+            val lastSeenLocation = data["lastSeenLocation"] as? HashMap<String, Any>
+            val location = if (lastSeenLocation != null) {
+                Location(
+                    latitude = lastSeenLocation["latitude"] as Double,
+                    longitude = lastSeenLocation["longitude"] as Double,
+                    address = lastSeenLocation["address"] as String
+                )
+            } else {
+                Location(0.0, 0.0, "")
+            }
+            val item = Item(
+                id = snapshot.id,
+                title = data["title"] as String,
+                description = data["description"] as String,
+                category = data["category"] as String,
+                imageUrl = data["imageUrl"] as String,
+                lastSeenLocation = location,
+                status = ItemStatus.valueOf(data["status"] as String),
+                createdAt = data["createdAt"] as Long
+            )
+
+            emit(Resource.Success(item))
+        } catch (e: Exception) {
+            e.printStackTrace()
+            emit(Resource.Error(e.message ?: "Failed to fetch items"))
+        }
+    }
 }
