@@ -31,6 +31,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
+import com.google.android.gms.maps.model.CameraPosition
+import com.google.android.gms.maps.model.LatLng
+import com.google.maps.android.compose.GoogleMap
+import com.google.maps.android.compose.MapUiSettings
+import com.google.maps.android.compose.Marker
+import com.google.maps.android.compose.MarkerState
+import com.google.maps.android.compose.rememberCameraPositionState
+import com.google.maps.android.compose.rememberUpdatedMarkerState
 import uk.ac.tees.mad.findit.model.Item
 import uk.ac.tees.mad.findit.model.ItemStatus
 import uk.ac.tees.mad.findit.ui.screens.home.components.decodeBase64ToBitmap
@@ -194,6 +202,35 @@ fun ItemDetailContent(
             style = MaterialTheme.typography.titleMedium,
             modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
         )
+        if (item.lastSeenLocation.latitude != 0.0 && item.lastSeenLocation.longitude != 0.0) {
+            val cameraPositionState = rememberCameraPositionState {
+                position = CameraPosition.fromLatLngZoom(
+                    LatLng(item.lastSeenLocation.latitude, item.lastSeenLocation.longitude),
+                    15f
+                )
+            }
+
+            GoogleMap(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(200.dp)
+                    .padding(bottom = 8.dp),
+                cameraPositionState = cameraPositionState,
+                uiSettings = MapUiSettings(zoomControlsEnabled = true)
+            ) {
+                Marker(
+                    state = rememberUpdatedMarkerState(
+                        position = LatLng(
+                            item.lastSeenLocation.latitude,
+                            item.lastSeenLocation.longitude
+                        )
+                    ),
+                    title = item.title,
+                    snippet = item.lastSeenLocation.address
+                )
+            }
+        }
+
         Text(
             text = item.lastSeenLocation.address,
             style = MaterialTheme.typography.bodyLarge,

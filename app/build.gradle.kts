@@ -73,6 +73,8 @@ dependencies {
 
     // Google Play Services Location
     implementation("com.google.android.gms:play-services-location:21.3.0")
+    //Maps compose
+    implementation("com.google.maps.android:maps-compose:6.4.3")
 
     // Permissions handling (Accompanist)
     implementation("com.google.accompanist:accompanist-permissions:0.34.0")
