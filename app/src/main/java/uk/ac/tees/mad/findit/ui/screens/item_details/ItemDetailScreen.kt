@@ -1,7 +1,10 @@
 package uk.ac.tees.mad.findit.ui.screens.item_details
 
+import android.widget.Toast
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -10,6 +13,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -27,6 +32,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -36,7 +42,6 @@ import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.MapUiSettings
 import com.google.maps.android.compose.Marker
-import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.rememberCameraPositionState
 import com.google.maps.android.compose.rememberUpdatedMarkerState
 import uk.ac.tees.mad.findit.model.Item
@@ -55,9 +60,30 @@ fun ItemDetailScreen(
     viewModel: ItemDetailViewModel = hiltViewModel()
 ) {
     val itemState by viewModel.item.collectAsState()
+    val updateStatus by viewModel.updateStatus.collectAsState()
+    val context = LocalContext.current
 
     LaunchedEffect(itemId) {
         viewModel.fetchItem(itemId)
+    }
+
+    //  toast messages for status updates
+    LaunchedEffect(updateStatus) {
+        when (updateStatus) {
+            is Resource.Success -> {
+                Toast.makeText(context, "Status updated successfully", Toast.LENGTH_SHORT).show()
+            }
+
+            is Resource.Error -> {
+                Toast.makeText(
+                    context,
+                    (updateStatus as Resource.Error).message,
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+
+            else -> {}
+        }
     }
 
     Scaffold(
@@ -97,7 +123,9 @@ fun ItemDetailScreen(
                 item?.let {
                     ItemDetailContent(
                         item = it,
-                        modifier = Modifier.padding(paddingValues)
+                        modifier = Modifier.padding(paddingValues),
+                        onClaimItem = { viewModel.claimItem(it) },
+                        isUpdating = updateStatus is Resource.Loading
                     )
                 }
             }
@@ -124,7 +152,9 @@ fun ItemDetailScreen(
 @Composable
 fun ItemDetailContent(
     item: Item,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onClaimItem: () -> Unit,
+    isUpdating: Boolean
 ) {
     Column(
         modifier = modifier
@@ -135,7 +165,7 @@ fun ItemDetailContent(
         // Item Image
         if (item.imageUrl.isNotEmpty()) {
             AsyncImage(
-                model = decodeBase64ToBitmap(item.imageUrl),
+                model = decodeBase64ToBitmap(item.imageUrl) ,
                 contentDescription = item.title,
                 modifier = Modifier
                     .fillMaxWidth()
@@ -196,7 +226,7 @@ fun ItemDetailContent(
             modifier = Modifier.padding(bottom = 8.dp)
         )
 
-        // Location
+        // Location Map
         Text(
             text = "Last Seen Location",
             style = MaterialTheme.typography.titleMedium,
@@ -230,7 +260,6 @@ fun ItemDetailContent(
                 )
             }
         }
-
         Text(
             text = item.lastSeenLocation.address,
             style = MaterialTheme.typography.bodyLarge,
@@ -249,6 +278,34 @@ fun ItemDetailContent(
             style = MaterialTheme.typography.bodyLarge,
             modifier = Modifier.padding(bottom = 8.dp)
         )
+
+        // Action Buttons
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 16.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly
+        ) {
+            if (item.status == ItemStatus.FOUND) {
+                Button(
+                    onClick = onClaimItem,
+                    enabled = !isUpdating,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.secondary
+                    )
+                ) {
+                    Text("Claim Item")
+                }
+            }
+        }
+
+        // Loading indicator for updates
+        if (isUpdating) {
+            CircularProgressIndicator(
+                modifier = Modifier
+                    .align(Alignment.CenterHorizontally)
+                    .padding(top = 16.dp)
+            )
+        }
     }
 }
-

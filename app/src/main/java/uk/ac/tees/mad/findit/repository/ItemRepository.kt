@@ -1,9 +1,11 @@
 package uk.ac.tees.mad.findit.repository
 
+import androidx.lifecycle.viewModelScope
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import uk.ac.tees.mad.findit.model.Item
 import uk.ac.tees.mad.findit.model.ItemStatus
@@ -93,4 +95,21 @@ class ItemRepository @Inject constructor(
             emit(Resource.Error(e.message ?: "Failed to fetch items"))
         }
     }
+
+    fun claimItem(item: Item): Flow<Resource<Item>> = flow {
+        emit(Resource.Loading())
+        try {
+            val updatedItem = item.copy(status = ItemStatus.CLAIMED)
+            firestore.collection("items")
+                .document(item.id)
+                .set(updatedItem)
+                .await()
+
+            emit(Resource.Success(item))
+        } catch (e: Exception) {
+            e.printStackTrace()
+            emit(Resource.Error(e.message ?: "Failed to fetch items"))
+        }
+    }
+
 }

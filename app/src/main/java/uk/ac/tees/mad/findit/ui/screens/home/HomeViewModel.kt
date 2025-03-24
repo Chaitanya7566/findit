@@ -30,7 +30,7 @@ class HomeViewModel @Inject constructor(
         fetchItems()
     }
 
-    private fun fetchItems() {
+    fun fetchItems() {
         viewModelScope.launch {
             repository.getItemsByStatus(ItemStatus.LOST).collect { _lostItems.value = it }
             repository.getItemsByStatus(ItemStatus.FOUND).collect { _foundItems.value = it }
