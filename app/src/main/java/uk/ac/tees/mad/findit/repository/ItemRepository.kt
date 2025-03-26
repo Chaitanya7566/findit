@@ -45,7 +45,9 @@ class ItemRepository @Inject constructor(
                         imageUrl = data["imageUrl"] as String,
                         lastSeenLocation = location,
                         status = ItemStatus.valueOf(data["status"] as String),
-                        createdAt = data["createdAt"] as Long
+                        createdAt = data["createdAt"] as Long,
+                        posterEmail = data["posterEmail"] as String?,
+                        posterPhone = data["posterPhone"] as String?
                     )
                 } else {
                     null
@@ -86,7 +88,9 @@ class ItemRepository @Inject constructor(
                 imageUrl = data["imageUrl"] as String,
                 lastSeenLocation = location,
                 status = ItemStatus.valueOf(data["status"] as String),
-                createdAt = data["createdAt"] as Long
+                createdAt = data["createdAt"] as Long,
+                posterEmail = data["posterEmail"] as String?,
+                posterPhone = data["posterPhone"] as String?
             )
 
             emit(Resource.Success(item))

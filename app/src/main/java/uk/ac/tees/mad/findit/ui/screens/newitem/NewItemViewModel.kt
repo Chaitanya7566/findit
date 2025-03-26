@@ -7,6 +7,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -26,7 +27,8 @@ import javax.inject.Inject
 @HiltViewModel
 class NewItemViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
-    private val firestore: FirebaseFirestore
+    private val firestore: FirebaseFirestore,
+    private val auth: FirebaseAuth
 ) : ViewModel() {
 
     private val _location = MutableStateFlow<Location?>(null)
@@ -74,7 +76,9 @@ class NewItemViewModel @Inject constructor(
                 val itemToPost = item.copy(
                     id = itemId,
                     imageUrl = base64Image, // Store Base64 string in imageUrl
-                    createdAt = System.currentTimeMillis()
+                    createdAt = System.currentTimeMillis(),
+                    posterEmail = auth.currentUser?.email,
+                    posterPhone = "1234567890"
                 )
 
                 // Save to Firestore

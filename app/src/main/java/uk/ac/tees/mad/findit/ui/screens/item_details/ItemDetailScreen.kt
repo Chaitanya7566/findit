@@ -1,10 +1,13 @@
 package uk.ac.tees.mad.findit.ui.screens.item_details
 
+import android.content.Intent
+import android.net.Uri
 import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -13,6 +16,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -23,12 +27,16 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
@@ -156,6 +164,9 @@ fun ItemDetailContent(
     onClaimItem: () -> Unit,
     isUpdating: Boolean
 ) {
+    val context = LocalContext.current
+    var showContactDialog by remember { mutableStateOf(false) }
+
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -297,6 +308,12 @@ fun ItemDetailContent(
                     Text("Claim Item")
                 }
             }
+            Button(
+                onClick = { showContactDialog = true },
+                enabled = !isUpdating
+            ) {
+                Text("Contact Poster")
+            }
         }
 
         // Loading indicator for updates
@@ -305,6 +322,55 @@ fun ItemDetailContent(
                 modifier = Modifier
                     .align(Alignment.CenterHorizontally)
                     .padding(top = 16.dp)
+            )
+        }
+
+        // Contact Dialog
+        if (showContactDialog) {
+            AlertDialog(
+                onDismissRequest = { showContactDialog = false },
+                title = { Text("Contact Poster") },
+                text = {
+                    Column {
+                        Text("Choose a contact method:")
+                        Spacer(modifier = Modifier.height(8.dp))
+                        if (item.posterEmail?.isNotEmpty() == true) {
+                            Button(
+                                onClick = {
+                                    val intent = Intent(Intent.ACTION_SENDTO).apply {
+                                        data = Uri.parse("mailto:${item.posterEmail}")
+                                        putExtra(Intent.EXTRA_SUBJECT, "Regarding your ${item.status.name.lowercase()} item: ${item.title}")
+                                    }
+                                    context.startActivity(Intent.createChooser(intent, "Send email"))
+                                    showContactDialog = false
+                                },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text("Email")
+                            }
+                        }
+                        if (item.posterPhone?.isNotEmpty() == true) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Button(
+                                onClick = {
+                                    val intent = Intent(Intent.ACTION_DIAL).apply {
+                                        data = Uri.parse("tel:${item.posterPhone}")
+                                    }
+                                    context.startActivity(intent)
+                                    showContactDialog = false
+                                },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text("Phone")
+                            }
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = { showContactDialog = false }) {
+                        Text("Cancel")
+                    }
+                }
             )
         }
     }
