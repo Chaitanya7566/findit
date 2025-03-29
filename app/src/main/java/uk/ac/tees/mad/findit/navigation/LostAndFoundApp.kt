@@ -11,6 +11,7 @@ import uk.ac.tees.mad.findit.ui.screens.auth.AuthScreen
 import uk.ac.tees.mad.findit.ui.screens.home.HomeScreen
 import uk.ac.tees.mad.findit.ui.screens.item_details.ItemDetailScreen
 import uk.ac.tees.mad.findit.ui.screens.newitem.NewItemScreen
+import uk.ac.tees.mad.findit.ui.screens.profile.ProfileScreen
 import uk.ac.tees.mad.findit.ui.screens.splash.SplashScreen
 
 @Composable
@@ -69,7 +70,12 @@ fun LostAndFoundApp(navController: NavHostController = rememberNavController()) 
         }
 
         composable(route = Routes.PROFILE) {
-            // ProfileScreen implementation
+            ProfileScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToItemDetail = { itemId ->
+                    navController.navigate("${Routes.ITEM_DETAIL}/$itemId")
+                }
+            )
         }
 
         composable(route = Routes.NEW_ITEM) {

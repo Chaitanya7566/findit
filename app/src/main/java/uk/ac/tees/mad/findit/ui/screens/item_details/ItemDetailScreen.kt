@@ -176,7 +176,7 @@ fun ItemDetailContent(
         // Item Image
         if (item.imageUrl.isNotEmpty()) {
             AsyncImage(
-                model = decodeBase64ToBitmap(item.imageUrl) ,
+                model = decodeBase64ToBitmap(item.imageUrl),
                 contentDescription = item.title,
                 modifier = Modifier
                     .fillMaxWidth()
@@ -199,7 +199,9 @@ fun ItemDetailContent(
             shape = MaterialTheme.shapes.small,
             color = if (item.status == ItemStatus.LOST)
                 MaterialTheme.colorScheme.error.copy(alpha = 0.1f)
-            else
+            else if (item.status == ItemStatus.CLAIMED) {
+                MaterialTheme.colorScheme.secondary.copy(alpha = 0.1f)
+            } else
                 MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
             modifier = Modifier.padding(bottom = 8.dp)
         ) {
@@ -208,6 +210,8 @@ fun ItemDetailContent(
                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                 color = if (item.status == ItemStatus.LOST)
                     MaterialTheme.colorScheme.error
+                else if (item.status == ItemStatus.CLAIMED)
+                    MaterialTheme.colorScheme.secondary
                 else
                     MaterialTheme.colorScheme.primary
             )
@@ -339,9 +343,17 @@ fun ItemDetailContent(
                                 onClick = {
                                     val intent = Intent(Intent.ACTION_SENDTO).apply {
                                         data = Uri.parse("mailto:${item.posterEmail}")
-                                        putExtra(Intent.EXTRA_SUBJECT, "Regarding your ${item.status.name.lowercase()} item: ${item.title}")
+                                        putExtra(
+                                            Intent.EXTRA_SUBJECT,
+                                            "Regarding your ${item.status.name.lowercase()} item: ${item.title}"
+                                        )
                                     }
-                                    context.startActivity(Intent.createChooser(intent, "Send email"))
+                                    context.startActivity(
+                                        Intent.createChooser(
+                                            intent,
+                                            "Send email"
+                                        )
+                                    )
                                     showContactDialog = false
                                 },
                                 modifier = Modifier.fillMaxWidth()

@@ -75,10 +75,11 @@ class NewItemViewModel @Inject constructor(
                 val itemId = firestore.collection("items").document().id
                 val itemToPost = item.copy(
                     id = itemId,
-                    imageUrl = base64Image, // Store Base64 string in imageUrl
+                    imageUrl = base64Image,
                     createdAt = System.currentTimeMillis(),
                     posterEmail = auth.currentUser?.email,
-                    posterPhone = "1234567890"
+                    posterPhone = "1234567890",
+                    postedId = auth.currentUser?.uid
                 )
 
                 // Save to Firestore
