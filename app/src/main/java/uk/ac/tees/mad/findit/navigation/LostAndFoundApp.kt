@@ -74,8 +74,14 @@ fun LostAndFoundApp(navController: NavHostController = rememberNavController()) 
                 onNavigateBack = { navController.popBackStack() },
                 onNavigateToItemDetail = { itemId ->
                     navController.navigate("${Routes.ITEM_DETAIL}/$itemId")
+                },
+                onNavigateToAuth = {
+                    navController.navigate(Routes.AUTH) {
+                        popUpTo(Routes.PROFILE) { inclusive = true }
+                    }
                 }
             )
+
         }
 
         composable(route = Routes.NEW_ITEM) {

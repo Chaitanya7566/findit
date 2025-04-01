@@ -7,29 +7,37 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.SetOptions
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withContext
 import uk.ac.tees.mad.findit.model.Item
 import uk.ac.tees.mad.findit.model.ItemStatus
 import uk.ac.tees.mad.findit.model.Location
 import uk.ac.tees.mad.findit.model.User
 import uk.ac.tees.mad.findit.utils.Resource
+import java.io.File
+import java.io.FileInputStream
+import java.util.Base64
 import javax.inject.Inject
 
 @HiltViewModel
 class ProfileViewModel @Inject constructor(
-    private val firestore: FirebaseFirestore,
-    @ApplicationContext private val context: Context
+    private val firestore: FirebaseFirestore
 ) : ViewModel() {
     private val _user = MutableStateFlow<Resource<User?>>(Resource.Idle())
     val user: StateFlow<Resource<User?>> = _user
 
     private val _userItems = MutableStateFlow<List<Item>>(emptyList())
     val userItems: StateFlow<List<Item>> = _userItems
+
+    private val _updateStatus = MutableStateFlow<Resource<Unit>>(Resource.Idle())
+    val updateStatus: StateFlow<Resource<Unit>> = _updateStatus
 
     init {
         fetchUserProfile()
@@ -46,12 +54,17 @@ class ProfileViewModel @Inject constructor(
                         .document(currentUser.uid)
                         .get()
                         .await()
-
-                    val user = document.toObject(User::class.java) ?: User(
+                    val data = document.data
+                    if (data == null) {
+                        _user.value = Resource.Error("No user data found")
+                        return@launch
+                    }
+                    val user = User(
                         id = currentUser.uid,
-                        name = currentUser.displayName ?: "Anonymous",
-                        email = currentUser.email ?: "",
-                        phone = currentUser.phoneNumber ?: "",
+                        name = data["name"] as? String ?: "",
+                        email = data["email"] as? String ?: "",
+                        phone = data["phone"] as? String ?: "",
+                        profilePictureUrl = data["profilePictureUrl"] as? String ?: ""
                     )
                     _user.value = Resource.Success(user)
                 } else {
@@ -101,5 +114,48 @@ class ProfileViewModel @Inject constructor(
                 Log.e("ProfileViewModel", "Failed to fetch user items", e)
             }
         }
+    }
+
+    fun updateProfile(updatedUser: User, imageFile: File?) {
+        viewModelScope.launch {
+            _updateStatus.value = Resource.Loading()
+            try {
+                val currentUser = FirebaseAuth.getInstance().currentUser
+                if (currentUser != null) {
+                    val userRef = firestore.collection("users").document(currentUser.uid)
+                    val profileUpdates = mutableMapOf<String, Any>(
+                        "name" to updatedUser.name,
+                        "email" to updatedUser.email
+                    )
+
+                    updatedUser.phone.let { profileUpdates["phone"] = it }
+
+                    if (imageFile != null) {
+                        val imageBytes = withContext(Dispatchers.IO) {
+                            FileInputStream(imageFile).use { it.readBytes() }
+                        }
+                        val base64Image = Base64.getEncoder().encodeToString(imageBytes)
+                        profileUpdates["profilePictureUrl"] = base64Image
+                    }
+
+                    userRef.set(profileUpdates, SetOptions.merge()).await()
+
+                    val updatedUserData = updatedUser.copy(
+                        profilePictureUrl = if (imageFile != null)
+                            profileUpdates["profilePictureUrl"] as String
+                        else
+                            updatedUser.profilePictureUrl
+                    )
+                    _user.value = Resource.Success(updatedUserData)
+                    _updateStatus.value = Resource.Success(Unit)
+                }
+            } catch (e: Exception) {
+                _updateStatus.value = Resource.Error(e.message ?: "Failed to update profile")
+            }
+        }
+    }
+
+    fun signOut() {
+        FirebaseAuth.getInstance().signOut()
     }
 }
