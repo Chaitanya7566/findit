@@ -13,6 +13,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -113,6 +114,8 @@ fun ProfileScreen(
                             viewModel.signOut()
                             onNavigateToAuth()
                         },
+                        onEditItem = viewModel::updateItem,
+                        onDeleteItem = viewModel::deleteItem,
                         isUpdating = updateStatus is Resource.Loading,
                         modifier = Modifier.padding(paddingValues)
                     )
@@ -137,7 +140,6 @@ fun ProfileScreen(
         }
     }
 }
-
 @Composable
 fun ProfileContent(
     user: User,
@@ -145,26 +147,28 @@ fun ProfileContent(
     onItemClick: (String) -> Unit,
     onUpdateProfile: (User, File?) -> Unit,
     onSignOut: () -> Unit,
+    onEditItem: (Item, File?) -> Unit,
+    onDeleteItem: (String) -> Unit,
     isUpdating: Boolean,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
     var showEditDialog by remember { mutableStateOf(false) }
-    val galleryLauncher =
-        rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
-            uri?.let {
-                try {
-                    val inputStream = context.contentResolver.openInputStream(uri)
-                    val file = File(context.cacheDir, "profile_image.jpg")
-                    file.outputStream().use { output ->
-                        inputStream?.copyTo(output)
-                    }
-                    onUpdateProfile(user, file)
-                } catch (e: Exception) {
-                    Toast.makeText(context, "Failed to load image", Toast.LENGTH_SHORT).show()
+    var showItemEditDialog by remember { mutableStateOf<Item?>(null) }
+    val galleryLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        uri?.let {
+            try {
+                val inputStream = context.contentResolver.openInputStream(uri)
+                val file = File(context.cacheDir, "profile_image.jpg")
+                file.outputStream().use { output ->
+                    inputStream?.copyTo(output)
                 }
+                onUpdateProfile(user, file)
+            } catch (e: Exception) {
+                Toast.makeText(context, "Failed to load image", Toast.LENGTH_SHORT).show()
             }
         }
+    }
 
     Column(
         modifier = modifier
@@ -180,7 +184,7 @@ fun ProfileContent(
             Box {
                 if (user.profilePictureUrl.isNotEmpty()) {
                     AsyncImage(
-                        model = decodeBase64ToBitmap(user.profilePictureUrl),
+                        model = decodeBase64ToBitmap(user.profilePictureUrl) ,
                         contentDescription = "Profile Picture",
                         modifier = Modifier
                             .size(80.dp)
@@ -197,7 +201,7 @@ fun ProfileContent(
                     ) {
                         Box(contentAlignment = Alignment.Center) {
                             Text(
-                                text = user.name.ifEmpty { "N" }.first().toString().uppercase(),
+                                text = user.name.first().toString().uppercase(),
                                 color = MaterialTheme.colorScheme.onPrimary,
                                 style = MaterialTheme.typography.headlineMedium
                             )
@@ -284,7 +288,12 @@ fun ProfileContent(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 items(items) { item ->
-                    ProfileItemCard(item = item, onClick = { onItemClick(item.id) })
+                    ProfileItemCard(
+                        item = item,
+                        onClick = { onItemClick(item.id) },
+                        onEdit = { showItemEditDialog = item },
+                        onDelete = { onDeleteItem(item.id) }
+                    )
                 }
             }
         }
@@ -301,7 +310,7 @@ fun ProfileContent(
     // Edit Profile Dialog
     if (showEditDialog) {
         var name by remember { mutableStateOf(user.name) }
-        var phone by remember { mutableStateOf(user.phone) }
+        var phone by remember { mutableStateOf(user.phone ?: "") }
 
         AlertDialog(
             onDismissRequest = { showEditDialog = false },
@@ -346,12 +355,98 @@ fun ProfileContent(
             }
         )
     }
+
+    // Edit Item Dialog
+    showItemEditDialog?.let { item ->
+        var title by remember { mutableStateOf(item.title) }
+        var description by remember { mutableStateOf(item.description) }
+        var category by remember { mutableStateOf(item.category) }
+        val itemGalleryLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+            uri?.let {
+                try {
+                    val inputStream = context.contentResolver.openInputStream(uri)
+                    val file = File(context.cacheDir, "item_image.jpg")
+                    file.outputStream().use { output ->
+                        inputStream?.copyTo(output)
+                    }
+                    val updatedItem = item.copy(
+                        title = title,
+                        description = description,
+                        category = category
+                    )
+                    onEditItem(updatedItem, file)
+                    showItemEditDialog = null
+                } catch (e: Exception) {
+                    Toast.makeText(context, "Failed to load image", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+
+        AlertDialog(
+            onDismissRequest = { showItemEditDialog = null },
+            title = { Text("Edit Item") },
+            text = {
+                Column {
+                    OutlinedTextField(
+                        value = title,
+                        onValueChange = { title = it },
+                        label = { Text("Title") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = description,
+                        onValueChange = { description = it },
+                        label = { Text("Description") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = category,
+                        onValueChange = { category = it },
+                        label = { Text("Category") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Button(
+                        onClick = { itemGalleryLauncher.launch("image/*") },
+                        modifier = Modifier.align(Alignment.End)
+                    ) {
+                        Text("Change Image")
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val updatedItem = item.copy(
+                            title = title,
+                            description = description,
+                            category = category
+                        )
+                        onEditItem(updatedItem, null)
+                        showItemEditDialog = null
+                    },
+                    enabled = title.isNotEmpty() && description.isNotEmpty() && category.isNotEmpty()
+                ) {
+                    Text("Save")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showItemEditDialog = null }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
 }
 
 @Composable
 fun ProfileItemCard(
     item: Item,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit
 ) {
     Card(
         modifier = Modifier
@@ -368,7 +463,7 @@ fun ProfileItemCard(
             // Item Image
             if (item.imageUrl.isNotEmpty()) {
                 AsyncImage(
-                    model = decodeBase64ToBitmap(item.imageUrl),
+                    model = decodeBase64ToBitmap(item.imageUrl) ,
                     contentDescription = item.title,
                     modifier = Modifier
                         .size(60.dp)
@@ -380,7 +475,7 @@ fun ProfileItemCard(
             Spacer(modifier = Modifier.width(16.dp))
 
             // Item Details
-            Column {
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = item.title,
                     style = MaterialTheme.typography.titleMedium,
@@ -393,6 +488,22 @@ fun ProfileItemCard(
                         MaterialTheme.colorScheme.error
                     else
                         MaterialTheme.colorScheme.primary
+                )
+            }
+
+            // Action Buttons
+            IconButton(onClick = onEdit) {
+                Icon(
+                    imageVector = Icons.Default.Edit,
+                    contentDescription = "Edit Item",
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            }
+            IconButton(onClick = onDelete) {
+                Icon(
+                    imageVector = Icons.Default.Delete,
+                    contentDescription = "Delete Item",
+                    tint = MaterialTheme.colorScheme.error
                 )
             }
         }

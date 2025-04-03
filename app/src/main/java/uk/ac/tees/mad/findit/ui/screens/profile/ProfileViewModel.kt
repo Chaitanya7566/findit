@@ -1,7 +1,5 @@
 package uk.ac.tees.mad.findit.ui.screens.profile
 
-
-import android.content.Context
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -9,7 +7,6 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.SetOptions
 import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -154,6 +151,54 @@ class ProfileViewModel @Inject constructor(
             }
         }
     }
+
+    fun updateItem(item: Item, imageFile: File?) {
+        viewModelScope.launch {
+            _updateStatus.value = Resource.Loading()
+            try {
+                val itemRef = firestore.collection("items").document(item.id)
+                val itemUpdates = mutableMapOf<String, Any>(
+                    "title" to item.title,
+                    "description" to item.description,
+                    "category" to item.category
+                )
+
+                if (imageFile != null) {
+                    val imageBytes = withContext(Dispatchers.IO) {
+                        FileInputStream(imageFile).use { it.readBytes() }
+                    }
+                    val base64Image = Base64.getEncoder().encodeToString(imageBytes)
+                    itemUpdates["imageUrl"] = base64Image
+                }
+
+                itemRef.set(itemUpdates, SetOptions.merge()).await()
+
+                val updatedItems = _userItems.value.map {
+                    if (it.id == item.id) {
+                        item.copy(imageUrl = if (imageFile != null) itemUpdates["imageUrl"] as String else it.imageUrl)
+                    } else it
+                }
+                _userItems.value = updatedItems
+                _updateStatus.value = Resource.Success(Unit)
+            } catch (e: Exception) {
+                _updateStatus.value = Resource.Error(e.message ?: "Failed to update item")
+            }
+        }
+    }
+
+    fun deleteItem(itemId: String) {
+        viewModelScope.launch {
+            _updateStatus.value = Resource.Loading()
+            try {
+                firestore.collection("items").document(itemId).delete().await()
+                _userItems.value = _userItems.value.filter { it.id != itemId }
+                _updateStatus.value = Resource.Success(Unit)
+            } catch (e: Exception) {
+                _updateStatus.value = Resource.Error(e.message ?: "Failed to delete item")
+            }
+        }
+    }
+
 
     fun signOut() {
         FirebaseAuth.getInstance().signOut()
