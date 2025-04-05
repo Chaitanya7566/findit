@@ -110,7 +110,7 @@ fun AuthScreen(
 
             // App Name
             Text(
-                text = "Lost & Found",
+                text = "FindIt",
                 style = MaterialTheme.typography.headlineMedium.copy(
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary

@@ -1,5 +1,6 @@
 package uk.ac.tees.mad.findit.ui.screens.home.tabs
 
+import android.util.Log
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -157,13 +158,16 @@ fun ItemsTab(
                 }
             }
 
-            is Resource.Error -> Text(
-                text = "Something went wrong",
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(16.dp),
-                textAlign = TextAlign.Center
-            )
+            is Resource.Error -> {
+                itemsState.message?.let { Log.d("TA", it) }
+                Text(
+                    text = "Something went wrong",
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(16.dp),
+                    textAlign = TextAlign.Center
+                )
+            }
 
             is Resource.Idle -> {}
         }

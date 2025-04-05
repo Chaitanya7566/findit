@@ -3,16 +3,19 @@ package uk.ac.tees.mad.findit.ui.screens.auth
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import uk.ac.tees.mad.findit.model.User
 import uk.ac.tees.mad.findit.utils.Resource
 import javax.inject.Inject
 
 @HiltViewModel
 class AuthViewModel @Inject constructor(
-    private val auth: FirebaseAuth
+    private val auth: FirebaseAuth,
+    private val firestore: FirebaseFirestore
 ) : ViewModel() {
 
     private val _authState = MutableStateFlow<Resource<String>>(Resource.Idle())
@@ -35,7 +38,12 @@ class AuthViewModel @Inject constructor(
         viewModelScope.launch {
             _authState.value = Resource.Loading()
             auth.createUserWithEmailAndPassword(email, password)
-                .addOnSuccessListener {
+                .addOnSuccessListener { user ->
+                    firestore.collection("users").document(user.user?.uid ?: "").set(
+                        hashMapOf(
+                            "email" to email
+                        )
+                    )
                     _authState.value = Resource.Success("Sign up successful")
                 }
                 .addOnFailureListener { exception ->

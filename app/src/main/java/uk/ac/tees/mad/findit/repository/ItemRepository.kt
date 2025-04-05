@@ -46,6 +46,7 @@ class ItemRepository @Inject constructor(
                         lastSeenLocation = location,
                         status = ItemStatus.valueOf(data["status"] as String),
                         createdAt = data["createdAt"] as Long,
+                        postedId = data["postedId"] as? String ?: "",
                         posterEmail = data["posterEmail"] as String?,
                         posterPhone = data["posterPhone"] as String?
                     )

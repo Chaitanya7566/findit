@@ -77,7 +77,7 @@ fun Splash(alpha: Float) {
             
             Text(
                 modifier = Modifier.alpha(alpha),
-                text = "Lost & Found",
+                text = "FindIt",
                 color = MaterialTheme.colorScheme.primary,
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Bold

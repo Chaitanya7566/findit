@@ -52,22 +52,31 @@ class ProfileViewModel @Inject constructor(
                         .get()
                         .await()
                     val data = document.data
-                    if (data == null) {
-                        _user.value = Resource.Error("No user data found")
-                        return@launch
+
+
+                    val user = if (data != null) {
+                        User(
+                            id = currentUser.uid,
+                            name = data["name"] as? String ?: "",
+                            email = data["email"] as? String ?: "",
+                            phone = data["phone"] as? String ?: "",
+                            profilePictureUrl = data["profilePictureUrl"] as? String ?: ""
+                        )
+                    } else {
+                        User(
+                            id = currentUser.uid,
+                            name = currentUser.displayName ?: "",
+                            email = currentUser.email ?: "",
+                            phone = currentUser.phoneNumber ?: "",
+                            profilePictureUrl = ""
+                        )
                     }
-                    val user = User(
-                        id = currentUser.uid,
-                        name = data["name"] as? String ?: "",
-                        email = data["email"] as? String ?: "",
-                        phone = data["phone"] as? String ?: "",
-                        profilePictureUrl = data["profilePictureUrl"] as? String ?: ""
-                    )
                     _user.value = Resource.Success(user)
                 } else {
                     _user.value = Resource.Error("No user signed in")
                 }
             } catch (e: Exception) {
+                e.printStackTrace()
                 _user.value = Resource.Error(e.message ?: "Failed to fetch profile")
             }
         }
@@ -108,6 +117,7 @@ class ProfileViewModel @Inject constructor(
                     _userItems.value = items
                 }
             } catch (e: Exception) {
+                e.printStackTrace()
                 Log.e("ProfileViewModel", "Failed to fetch user items", e)
             }
         }

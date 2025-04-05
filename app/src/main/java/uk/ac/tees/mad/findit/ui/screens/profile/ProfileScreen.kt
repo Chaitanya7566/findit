@@ -1,5 +1,6 @@
 package uk.ac.tees.mad.findit.ui.screens.profile
 
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -123,6 +124,7 @@ fun ProfileScreen(
             }
 
             is Resource.Error -> {
+                userState.message?.let { Log.d("ER", it) }
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -201,7 +203,7 @@ fun ProfileContent(
                     ) {
                         Box(contentAlignment = Alignment.Center) {
                             Text(
-                                text = user.name.first().toString().uppercase(),
+                                text = user.name.ifEmpty { "N" }.first().toString().uppercase(),
                                 color = MaterialTheme.colorScheme.onPrimary,
                                 style = MaterialTheme.typography.headlineMedium
                             )

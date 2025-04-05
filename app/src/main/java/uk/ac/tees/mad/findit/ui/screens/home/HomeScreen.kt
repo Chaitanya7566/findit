@@ -68,7 +68,7 @@ fun HomeScreen(
         topBar = {
             if (!isSearchActive) {
                 TopAppBar(
-                    title = { Text("Lost & Found") },
+                    title = { Text("FindIt") },
                     colors = TopAppBarDefaults.topAppBarColors(
                         containerColor = MaterialTheme.colorScheme.primary,
                         titleContentColor = MaterialTheme.colorScheme.onPrimary
